@@ -599,7 +599,11 @@ function attendeeWeight(r, playerId){
   return 1;
 }
 function formatAttendees(r){
-  return r.attendees.map(id=>{
+  const sortedIds = [...r.attendees].sort((a,b)=>{
+    const pa=db.players.find(pp=>pp.id===a), pb=db.players.find(pp=>pp.id===b);
+    return nameCompare(pa?pa.name:'', pb?pb.name:'');
+  });
+  return sortedIds.map(id=>{
     const p=db.players.find(pp=>pp.id===id);
     const name = p?p.name:'?';
     const w = attendeeWeight(r, id);
