@@ -223,6 +223,11 @@
       <div class="ok" id="passChangeMsg"></div>
     </div>
     <div class="card">
+      <h2>Резервная копия</h2>
+      <p class="small">Скачивает все данные (игроков, походы, дроп, расчёты) в один JSON-файл на компьютер. Полезно сохранять раз в месяц на всякий случай — если что-то случится с базой, будет из чего восстановить.</p>
+      <button class="secondary" onclick="exportBackup()">Скачать резервную копию (JSON)</button>
+    </div>
+    <div class="card">
       <h2>Подключение к базе</h2>
       <p class="small">Текущий проект Firebase сохранён в этом браузере. Чтобы отвязать это устройство от базы (например, чтобы подключить другой проект), нажмите кнопку ниже — потребуется заново вставить конфиг.</p>
       <button class="danger" onclick="forgetConfig()">Отвязать это устройство от базы</button>
@@ -332,6 +337,24 @@ function forgetConfig(){
   localStorage.removeItem('l2_fb_config');
   localStorage.removeItem('l2_unlock_key');
   location.reload();
+}
+function exportBackup(){
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    players: db.players,
+    raids: db.raids,
+    loot: db.loot,
+    distributions: db.distributions
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'wakeless-loot-backup-' + todayStr() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function connectFirebase(cfg){
@@ -781,7 +804,10 @@ function editLoot(id){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 function cancelEditLoot(){ resetLootForm(); }
-function deleteLoot(id){ fs.collection('loot').doc(id).delete(); }
+function deleteLoot(id){
+  if(!confirm('Удалить эту позицию дропа?')) return;
+  fs.collection('loot').doc(id).delete();
+}
 function lootIsDistributed(id){ return db.distributions.some(d=>(d.lootIds||[]).includes(id)); }
 function renderLoot(){
   const tb = document.getElementById('lootTbody');
