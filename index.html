@@ -83,7 +83,11 @@
     <div class="card">
       <h2>Список игроков</h2>
       <table>
-        <thead><tr><th>Ник</th><th>Походов</th><th>Заработано всего</th><th>Не оплачено</th><th></th></tr></thead>
+        <thead><tr>
+          <th class="sortable" onclick="setPlayersSort('name')" id="thPlayerName">Ник</th>
+          <th class="sortable" onclick="setPlayersSort('raids')" id="thPlayerRaids">Походов</th>
+          <th>Заработано всего</th><th>Не оплачено</th><th></th>
+        </tr></thead>
         <tbody id="playersTbody"></tbody>
       </table>
     </div>
@@ -124,7 +128,7 @@
     <div class="card">
       <h2>Список походов</h2>
       <table>
-        <thead><tr><th>Дата</th><th>Подземелье</th><th>Участники</th><th>Статус</th><th></th></tr></thead>
+        <thead><tr><th class="sortable" onclick="setRaidsSort()" id="thRaidDate">Дата</th><th>Подземелье</th><th>Участники</th><th>Статус</th><th></th></tr></thead>
         <tbody id="raidsTbody"></tbody>
       </table>
     </div>
@@ -164,7 +168,12 @@
         </div>
       </div>
       <table>
-        <thead><tr><th>Дата</th><th>Предмет</th><th>Кол-во</th><th>Сумма</th><th>Поход</th><th>Статус</th><th></th></tr></thead>
+        <thead><tr>
+          <th class="sortable" onclick="setLootSort('date')" id="thLootDate">Дата</th>
+          <th>Предмет</th><th>Кол-во</th>
+          <th class="sortable" onclick="setLootSort('price')" id="thLootPrice">Сумма</th>
+          <th>Поход</th><th>Статус</th><th></th>
+        </tr></thead>
         <tbody id="lootTbody"></tbody>
       </table>
       <div class="row" style="margin-top:8px;justify-content:flex-end;">
@@ -208,6 +217,16 @@
   <div class="panel" id="tab-history">
     <div class="card">
       <h2>История расчётов</h2>
+      <div class="row">
+        <div class="field"><label>Сортировка</label>
+          <select id="historySortSelect" onchange="renderHistory()">
+            <option value="date_desc">Сначала новые</option>
+            <option value="date_asc">Сначала старые</option>
+            <option value="sum_desc">Сначала большие суммы</option>
+            <option value="sum_asc">Сначала маленькие суммы</option>
+          </select>
+        </div>
+      </div>
       <div id="historyList"></div>
     </div>
   </div>
@@ -520,12 +539,43 @@ function playerStats(id){
   return {raidsCount, totalEarned, totalUnpaid};
 }
 
+// Кириллические ники идут раньше латинских, внутри группы — обычный алфавитный порядок.
+function isCyrillicStart(s){ return /^[а-яё]/i.test(s||''); }
+function nameCompare(a,b){
+  const ca = isCyrillicStart(a), cb = isCyrillicStart(b);
+  if(ca!==cb) return ca ? -1 : 1;
+  return (a||'').localeCompare(b||'', 'ru');
+}
+function sortedPlayers(){
+  return [...db.players].sort((a,b)=>nameCompare(a.name,b.name));
+}
+
+let playersSort = {field:'name', dir:'asc'};
+function setPlayersSort(field){
+  if(playersSort.field===field) playersSort.dir = playersSort.dir==='asc' ? 'desc' : 'asc';
+  else { playersSort.field = field; playersSort.dir = field==='name' ? 'asc' : 'desc'; }
+  renderPlayers();
+}
+function updateSortHeaders(){
+  const arrow = (dir)=> dir==='asc' ? ' ▲' : ' ▼';
+  const setTxt = (id, label, active, dir)=>{ const el=document.getElementById(id); if(el) el.textContent = label + (active?arrow(dir):''); };
+  setTxt('thPlayerName', 'Ник', playersSort.field==='name', playersSort.dir);
+  setTxt('thPlayerRaids', 'Походов', playersSort.field==='raids', playersSort.dir);
+  setTxt('thRaidDate', 'Дата', true, raidsSort.dir);
+  setTxt('thLootDate', 'Дата', lootSort.field==='date', lootSort.dir);
+  setTxt('thLootPrice', 'Сумма', lootSort.field==='price', lootSort.dir);
+}
 function renderPlayers(){
   const tb = document.getElementById('playersTbody');
   if(!tb) return;
+  updateSortHeaders();
   if(db.players.length===0){ tb.innerHTML = '<tr><td colspan="5" class="empty">Пока нет игроков</td></tr>'; return; }
-  tb.innerHTML = db.players.map(p=>{
-    const s = playerStats(p.id);
+  let rows = db.players.map(p=>({p, s:playerStats(p.id)}));
+  rows.sort((x,y)=>{
+    let cmp = playersSort.field==='name' ? nameCompare(x.p.name, y.p.name) : (x.s.raidsCount - y.s.raidsCount);
+    return playersSort.dir==='asc' ? cmp : -cmp;
+  });
+  tb.innerHTML = rows.map(({p,s})=>{
     return `<tr>
       <td>${esc(p.name)}</td>
       <td>${s.raidsCount}</td>
@@ -560,7 +610,7 @@ function formatAttendees(r){
 function renderRaidChips(){
   const box = document.getElementById('raidAttendeeChips');
   if(!box) return;
-  box.innerHTML = db.players.map(p=>`<span class="chip ${raidAttendeesSelected.has(p.id)?'on':''}" onclick="toggleRaidChip('${p.id}')">${esc(p.name)}</span>`).join('') || '<span class="small muted">Сначала добавьте игроков или впишите ник ниже</span>';
+  box.innerHTML = sortedPlayers().map(p=>`<span class="chip ${raidAttendeesSelected.has(p.id)?'on':''}" onclick="toggleRaidChip('${p.id}')">${esc(p.name)}</span>`).join('') || '<span class="small muted">Сначала добавьте игроков или впишите ник ниже</span>';
   renderRaidWeights();
 }
 function toggleWeightPanel(){
@@ -578,7 +628,8 @@ function renderRaidWeights(){
   Object.keys(raidWeights).forEach(id=>{ if(!attendeeIds.includes(id)) delete raidWeights[id]; });
   const exceptionIds = Object.keys(raidWeights).filter(id=>attendeeIds.includes(id));
 
-  const available = attendeeIds.filter(id=>!exceptionIds.includes(id));
+  const available = attendeeIds.filter(id=>!exceptionIds.includes(id))
+    .sort((a,b)=>{ const pa=db.players.find(pp=>pp.id===a), pb=db.players.find(pp=>pp.id===b); return nameCompare(pa?pa.name:'', pb?pb.name:''); });
   selectEl.innerHTML = available.length ? available.map(id=>{
     const p = db.players.find(pp=>pp.id===id);
     return `<option value="${id}">${esc(p?p.name:'?')}</option>`;
@@ -672,11 +723,17 @@ function deleteRaid(id){
   db.loot.filter(l=>l.raidId===id).forEach(l=>{ fs.collection('loot').doc(l.id).update({raidId:''}); });
 }
 function raidIsDistributed(id){ return db.distributions.some(d=>(d.raidIds||[]).includes(id)); }
+let raidsSort = {dir:'desc'}; // по умолчанию — новые сверху
+function setRaidsSort(){
+  raidsSort.dir = raidsSort.dir==='desc' ? 'asc' : 'desc';
+  renderRaids();
+}
 function renderRaids(){
   const tb = document.getElementById('raidsTbody');
   if(!tb) return;
+  updateSortHeaders();
   if(db.raids.length===0){ tb.innerHTML='<tr><td colspan="5" class="empty">Пока нет походов</td></tr>'; return; }
-  const sorted=[...db.raids].sort((a,b)=>b.date.localeCompare(a.date));
+  const sorted=[...db.raids].sort((a,b)=> raidsSort.dir==='desc' ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date));
   tb.innerHTML = sorted.map(r=>{
     const dist = raidIsDistributed(r.id);
     return `<tr>
@@ -809,16 +866,26 @@ function deleteLoot(id){
   fs.collection('loot').doc(id).delete();
 }
 function lootIsDistributed(id){ return db.distributions.some(d=>(d.lootIds||[]).includes(id)); }
+let lootSort = {field:'date', dir:'desc'};
+function setLootSort(field){
+  if(lootSort.field===field) lootSort.dir = lootSort.dir==='asc' ? 'desc' : 'asc';
+  else { lootSort.field = field; lootSort.dir = 'desc'; }
+  renderLoot();
+}
 function renderLoot(){
   const tb = document.getElementById('lootTbody');
   if(!tb) return;
+  updateSortHeaders();
   const filterVal = document.getElementById('lootFilterRaid') ? document.getElementById('lootFilterRaid').value : 'all';
   let filtered = db.loot;
   if(filterVal==='unlinked') filtered = db.loot.filter(l=>!l.raidId);
   else if(filterVal && filterVal!=='all') filtered = db.loot.filter(l=>l.raidId===filterVal);
   if(filtered.length===0){ tb.innerHTML='<tr><td colspan="7" class="empty">Нет записей дропа для этого фильтра</td></tr>'; }
   else{
-    const sorted=[...filtered].sort((a,b)=>b.date.localeCompare(a.date));
+    const sorted=[...filtered].sort((a,b)=>{
+      const cmp = lootSort.field==='price' ? (a.price - b.price) : a.date.localeCompare(b.date);
+      return lootSort.dir==='asc' ? cmp : -cmp;
+    });
     tb.innerHTML = sorted.map(l=>{
       const raid = db.raids.find(r=>r.id===l.raidId);
       const dist = lootIsDistributed(l.id);
@@ -854,7 +921,7 @@ function renderCalc(){
   }
 
   const rtb = document.getElementById('calcRaidsTbody');
-  rtb.innerHTML = raidsPool.length ? [...raidsPool].sort((a,b)=>a.date.localeCompare(b.date)).map(r=>{
+  rtb.innerHTML = raidsPool.length ? [...raidsPool].sort((a,b)=>b.date.localeCompare(a.date)).map(r=>{
     return `<tr>
       <td><input type="checkbox" ${calcRaidSel.has(r.id)?'checked':''} onchange="toggleCalcRaid('${r.id}')"></td>
       <td>${r.date}</td><td>${esc(r.note||'—')}</td><td>${formatAttendees(r)}</td>
@@ -915,7 +982,7 @@ function renderCalcPreview(){
 
   const ltb = document.getElementById('calcLootPreviewTbody');
   if(ltb){
-    ltb.innerHTML = selectedLoot.length ? [...selectedLoot].sort((a,b)=>a.date.localeCompare(b.date)).map(l=>{
+    ltb.innerHTML = selectedLoot.length ? [...selectedLoot].sort((a,b)=>b.date.localeCompare(a.date)).map(l=>{
       const raid = db.raids.find(r=>r.id===l.raidId);
       return `<tr><td>${l.date}</td><td>${esc(l.item)} ×${l.qty}</td><td>${fmt(l.price)}</td><td>${raid?esc(raid.note||raid.date):'<span class="muted">без привязки</span>'}</td></tr>`;
     }).join('') : '<tr><td colspan="4" class="empty">Нет доступного дропа</td></tr>';
@@ -974,7 +1041,13 @@ function renderHistory(){
   const box = document.getElementById('historyList');
   if(!box) return;
   if(db.distributions.length===0){ box.innerHTML = '<p class="empty">Расчётов ещё не было. Создайте первый на вкладке «Расчёт».</p>'; return; }
-  const sorted = [...db.distributions].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  const sortMode = document.getElementById('historySortSelect') ? document.getElementById('historySortSelect').value : 'date_desc';
+  const sorted = [...db.distributions].sort((a,b)=>{
+    if(sortMode==='sum_desc') return b.totalRevenue - a.totalRevenue;
+    if(sortMode==='sum_asc') return a.totalRevenue - b.totalRevenue;
+    if(sortMode==='date_asc') return a.createdAt.localeCompare(b.createdAt);
+    return b.createdAt.localeCompare(a.createdAt); // date_desc по умолчанию
+  });
   box.innerHTML = sorted.map(d=>{
     const players = d.players||[];
     const paid = players.filter(p=>p.status==='paid').length;
