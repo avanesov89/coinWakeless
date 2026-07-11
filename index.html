@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Учёт дропа клана</title>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#f7f8fa; --panel:#ffffff; --border:#e2e5ea; --text:#1f2430; --muted:#6b7280;
+    --accent:#3b5bdb; --accent-light:#e8ecfd;
+    --green:#1f9d55; --green-bg:#e7f8ee;
+    --amber:#b7791f; --amber-bg:#fdf3df;
+    --red:#c0392b; --red-bg:#fce9e7;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+  .app{max-width:1180px;margin:0 auto;padding:18px 20px 60px;}
+  h1{font-size:20px;margin:0 0 4px;}
+  .subtitle{color:var(--muted);margin:0 0 18px;font-size:13px;}
+  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap;}
+  .tab-btn{padding:9px 16px;border:none;background:none;cursor:pointer;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;}
+  .card h2{font-size:15px;margin:0 0 12px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;}
+  .field{display:flex;flex-direction:column;gap:4px;}
+  .field label{font-size:12px;color:var(--muted);}
+  input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{
+    border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;background:#fff;color:var(--text);min-width:120px;
+  }
+  textarea{min-width:220px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;}
+  button{border:none;border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer;background:var(--accent);color:#fff;font-weight:500;}
+  button.secondary{background:var(--accent-light);color:var(--accent);}
+  button.danger{background:var(--red-bg);color:var(--red);}
+  button.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+  button:disabled{opacity:.45;cursor:not-allowed;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;}
+  tr:hover td{background:#fafbfc;}
+  .muted{color:var(--muted);}
+  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;}
+  .pill.green{background:var(--green-bg);color:var(--green);}
+  .pill.amber{background:var(--amber-bg);color:var(--amber);}
+  .pill.red{background:var(--red-bg);color:var(--red);}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;width:100%;}
+  .chip{padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:#fff;user-select:none;}
+  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .stat-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  .stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 16px;min-width:140px;}
+  .stat .num{font-size:20px;font-weight:700;}
+  .stat .lbl{font-size:12px;color:var(--muted);}
+  .icon-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 6px;}
+  .icon-btn:hover{color:var(--red);}
+  .empty{color:var(--muted);font-style:italic;padding:14px 0;}
+  select.status{border-radius:6px;font-weight:600;font-size:12px;padding:5px 7px;}
+  .status-none{background:var(--red-bg);color:var(--red);}
+  .status-sent{background:var(--amber-bg);color:var(--amber);}
+  .status-paid{background:var(--green-bg);color:var(--green);}
+  .dist-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;background:#fff;}
+  .dist-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .dist-head .title{font-weight:600;}
+  .small{font-size:12px;color:var(--muted);}
+  .copy-btn{font-size:11px;padding:4px 8px;background:var(--accent-light);color:var(--accent);}
+  hr.sep{border:none;border-top:1px solid var(--border);margin:14px 0;}
+
+  /* gate & setup screens */
+  #gateScreen,#setupScreen,#loadingScreen{
+    max-width:440px;margin:60px auto;background:var(--panel);border:1px solid var(--border);
+    border-radius:12px;padding:26px;
+  }
+  #gateScreen h2,#setupScreen h2{margin-top:0;font-size:17px;}
+  .err{color:var(--red);font-size:12px;margin-top:6px;min-height:16px;}
+  .ok{color:var(--green);font-size:12px;margin-top:6px;}
+  .steps{font-size:12.5px;color:var(--muted);line-height:1.5;background:var(--bg);border-radius:8px;padding:10px 12px;margin-top:10px;}
+  .steps b{color:var(--text);}
+  #topbar{display:flex;justify-content:flex-end;margin-bottom:6px;}
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">
+  <h2>Подключение…</h2>
+  <p class="small">Секунду, соединяемся с базой данных.</p>
+</div>
+
+<div id="setupScreen" style="display:none;">
+  <h2>Первая настройка</h2>
+  <p class="small">Вставьте сюда конфиг вашего проекта Firebase (объект <code>firebaseConfig</code> из консоли Firebase — Project settings → Your apps → SDK setup). Можно вставить как есть, в кавычках или без — приложение разберёт само.</p>
+  <div class="field" style="margin-bottom:10px;">
+    <textarea id="fbConfigInput" rows="8" style="width:100%;" placeholder='{"apiKey": "...", "authDomain": "...", "projectId": "...", "storageBucket": "...", "messagingSenderId": "...", "appId": "..."}'></textarea>
+  </div>
+  <button onclick="submitConfig()">Подключить</button>
+  <div class="err" id="setupErr"></div>
+  <div class="steps">
+    <b>Где взять конфиг:</b> console.firebase.google.com → создать проект → в разделе Build открыть <b>Firestore Database</b> → Create database (test mode подходит для старта) → включить <b>Authentication → Sign-in method → Anonymous</b> → в настройках проекта (шестерёнка) добавить веб-приложение и скопировать объект конфигурации.
+  </div>
+</div>
+
+<div id="gateScreen" style="display:none;">
+  <h2>Введите пароль</h2>
+  <p class="small">Доступ ограничен паролем клана (это не настоящая защита, а фильтр от случайных людей).</p>
+  <div class="row">
+    <input type="password" id="gatePass" placeholder="Пароль" style="width:100%;">
+    <button onclick="tryUnlock()">Войти</button>
+  </div>
+  <div class="err" id="gateErr"></div>
+  <div id="firstPassBlock" style="display:none;">
+    <hr class="sep">
+    <p class="small">Пароль ещё не задан. Придумайте его сейчас — он сохранится в базе для всех устройств.</p>
+    <div class="row">
+      <input type="password" id="firstPass" placeholder="Новый пароль" style="width:100%;">
+      <button class="secondary" onclick="setFirstPass()">Задать пароль</button>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="mainApp" style="display:none;">
+  <div id="topbar">
+    <button class="ghost" onclick="lockApp()">Выйти</button>
+  </div>
+  <h1>Учёт дропа и распределения — клан</h1>
+  <p class="subtitle">Игроки · Походы · Дроп/продажи · Расчёт долей · История выплат</p>
+
+  <div class="stat-row" id="statRow"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="players">Игроки</button>
+    <button class="tab-btn" data-tab="raids">Походы</button>
+    <button class="tab-btn" data-tab="loot">Дроп и продажи</button>
+    <button class="tab-btn" data-tab="calc">Расчёт</button>
+    <button class="tab-btn" data-tab="history">История</button>
+    <button class="tab-btn" data-tab="settings">Настройки</button>
+  </div>
+
+  <!-- PLAYERS -->
+  <div class="panel active" id="tab-players">
+    <div class="card">
+      <h2>Добавить игрока</h2>
+      <div class="row">
+        <div class="field"><label>Ник</label><input type="text" id="newPlayerName" placeholder="Ник персонажа"></div>
+        <button onclick="addPlayer()">Добавить</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Список игроков</h2>
+      <table>
+        <thead><tr><th>Ник</th><th>Походов</th><th>Заработано всего</th><th>Не оплачено</th><th></th></tr></thead>
+        <tbody id="playersTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RAIDS -->
+  <div class="panel" id="tab-raids">
+    <div class="card">
+      <h2 id="raidFormTitle">Добавить поход</h2>
+      <div class="row">
+        <div class="field"><label>Дата</label><input type="date" id="raidDate"></div>
+        <div class="field"><label>Название подземелья</label><input type="text" id="raidNote" placeholder="Напр. Queen Ant"></div>
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Участники (кликните ников, новых — впишите и нажмите Enter)</label>
+        <div class="chips" id="raidAttendeeChips"></div>
+        <div class="row" style="margin-top:8px;">
+          <input type="text" id="raidNewNick" placeholder="Новый ник + Enter" style="min-width:180px;">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <button type="button" class="ghost" style="font-size:12px;padding:4px 10px;" onclick="toggleWeightPanel()">⚙ Коэффициент вклада (редкий случай — раз в месяц и т.п.)</button>
+        <div id="raidWeightsPanel" style="display:none;margin-top:8px;background:var(--bg);border-radius:8px;padding:10px;">
+          <p class="small" style="margin:0 0 8px;">Если кто-то в этом конкретном походе внёс особый вклад (мощный бафф, помог быстрее убить босса и т.п.), выберите его и укажите множитель — его доля именно с этого похода вырастет за счёт остальных участников, пропорционально. Для всех остальных ничего указывать не нужно — по умолчанию доля равная.</p>
+          <div class="row" style="margin-bottom:8px;">
+            <select id="weightPlayerSelect" style="min-width:160px;"></select>
+            <input type="number" id="weightValueInput" value="2" step="0.1" min="0.1" style="width:80px;">
+            <button class="secondary" onclick="addWeightException()">Добавить</button>
+          </div>
+          <div id="raidWeightsList" style="display:flex;flex-direction:column;gap:6px;"></div>
+        </div>
+      </div>
+      <div class="row">
+        <button onclick="saveRaid()" id="raidSaveBtn">Сохранить поход</button>
+        <button class="ghost" onclick="cancelEditRaid()" id="raidCancelBtn" style="display:none;">Отмена редактирования</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Список походов</h2>
+      <table>
+        <thead><tr><th>Дата</th><th>Подземелье</th><th>Участники</th><th>Статус</th><th></th></tr></thead>
+        <tbody id="raidsTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LOOT -->
+  <div class="panel" id="tab-loot">
+    <div class="card">
+      <h2 id="lootFormTitle">Добавить дроп / продажу</h2>
+      <p class="small">Сумму продажи необязательно указывать сразу — можно добавить позицию с суммой 0, а когда предмет реально продастся (хоть через неделю), вернуться и нажать ✎ в журнале, чтобы вписать итоговую сумму. Можно сразу вписать весь дроп с похода — жмите «+ ещё позиция» и добавляйте построчно, всё сохранится за один раз.</p>
+      <div class="row">
+        <div class="field"><label>Поход</label>
+          <select id="lootRaid"><option value="" disabled selected>Выберите из списка</option></select>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:2px;">
+        <div class="small muted" style="width:320px;">Название предмета</div>
+        <div class="small muted" style="width:70px;">Кол-во</div>
+        <div class="small muted" style="width:110px;">Сумма (L монет)</div>
+      </div>
+      <div id="lootRowsContainer"></div>
+      <div class="row" style="margin-top:4px;">
+        <button type="button" class="secondary" onclick="addLootRow()" id="lootAddRowBtn">+ ещё позиция</button>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button onclick="saveLoot()" id="lootSaveBtn">Добавить</button>
+        <button class="ghost" onclick="cancelEditLoot()" id="lootCancelBtn" style="display:none;">Отмена редактирования</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Журнал дропа</h2>
+      <div class="row">
+        <div class="field"><label>Показать поход</label>
+          <select id="lootFilterRaid" onchange="renderLoot()">
+            <option value="all">Все походы</option>
+          </select>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Дата</th><th>Предмет</th><th>Кол-во</th><th>Сумма</th><th>Поход</th><th>Статус</th><th></th></tr></thead>
+        <tbody id="lootTbody"></tbody>
+      </table>
+      <div class="row" style="margin-top:8px;justify-content:flex-end;">
+        <div class="small">Итого нераспределено: <b id="lootUnallocSum">0</b> L монет</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALC -->
+  <div class="panel" id="tab-calc">
+    <div class="card">
+      <h2>Новый расчёт распределения</h2>
+      <p class="small">Отметьте походы, которые войдут в этот расчёт (по умолчанию — только ещё не распределённые). Весь ещё не распределённый дроп подтягивается автоматически — без исключений. Дроп, привязанный к конкретному походу, делится между участниками именно этого похода (поровну, либо с учётом коэффициента вклада, если он был задан для похода — см. вкладку «Походы»); непривязанный дроп делится поровну между всеми отмеченными походами, а дальше — так же между их участниками. Итог по игроку — сумма его долей по тем походам, где он реально был, поэтому у ходившего 2 раза из 4 сумма считается только из этих двух дней.</p>
+      <div class="row">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);">
+          <input type="checkbox" id="calcShowAll" onchange="renderCalc()"> показать уже распределённые походы
+        </label>
+      </div>
+      <hr class="sep">
+      <h2 style="font-size:13px;">Походы</h2>
+      <table>
+        <thead><tr><th></th><th>Дата</th><th>Подземелье</th><th>Участники</th></tr></thead>
+        <tbody id="calcRaidsTbody"></tbody>
+      </table>
+      <hr class="sep">
+      <h2 style="font-size:13px;">Дроп, который войдёт в расчёт (автоматически, весь непривязанный/распределённый по выбранным походам)</h2>
+      <table>
+        <thead><tr><th>Дата</th><th>Предмет</th><th>Сумма</th><th>Поход</th></tr></thead>
+        <tbody id="calcLootPreviewTbody"></tbody>
+      </table>
+      <hr class="sep">
+      <div id="calcPreview"></div>
+      <div class="row" style="margin-top:12px;">
+        <div class="field"><label>Название расчёта</label><input type="text" id="calcLabel" placeholder="Напр. Июль, недели 1-2"></div>
+        <button onclick="saveDistribution()">Сохранить расчёт и начать выдачу</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="panel" id="tab-history">
+    <div class="card">
+      <h2>История расчётов</h2>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="panel" id="tab-settings">
+    <div class="card">
+      <h2>Пароль доступа</h2>
+      <div class="row">
+        <div class="field"><label>Новый пароль</label><input type="password" id="newAppPass" placeholder="Новый пароль"></div>
+        <button onclick="changeAppPass()">Сохранить</button>
+      </div>
+      <div class="ok" id="passChangeMsg"></div>
+    </div>
+    <div class="card">
+      <h2>Подключение к базе</h2>
+      <p class="small">Текущий проект Firebase сохранён в этом браузере. Чтобы отвязать это устройство от базы (например, чтобы подключить другой проект), нажмите кнопку ниже — потребуется заново вставить конфиг.</p>
+      <button class="danger" onclick="forgetConfig()">Отвязать это устройство от базы</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+// ==================== STATE ====================
+let db = {players:[], raids:[], loot:[], distributions:[]};
+let fs = null;         // firestore instance
+let auth = null;       // auth instance
+let appPasscode = null; // cached passcode from meta doc
+let unsubs = [];
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmt(n){ return Number(n||0).toLocaleString('ru-RU',{maximumFractionDigits:2}); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ==================== BOOTSTRAP ====================
+window.addEventListener('DOMContentLoaded', boot);
+
+function boot(){
+  const cfg = loadFbConfig();
+  if(!cfg){
+    show('setupScreen');
+    return;
+  }
+  connectFirebase(cfg);
+}
+
+function loadFbConfig(){
+  try{ return JSON.parse(localStorage.getItem('l2_fb_config')||'null'); }catch(e){ return null; }
+}
+function saveFbConfig(cfg){ localStorage.setItem('l2_fb_config', JSON.stringify(cfg)); }
+
+function show(id){
+  ['loadingScreen','setupScreen','gateScreen','mainApp'].forEach(s=>{
+    document.getElementById(s).style.display = (s===id) ? 'block' : 'none';
+  });
+}
+
+function extractConfigSnippet(raw){
+  // Находит именно объект конфига внутри вставленного текста, даже если
+  // рядом есть import/const/вызовы initializeApp(...) с собственными { }.
+  const keyIdx = raw.search(/apiKey/i);
+  if(keyIdx === -1) return raw; // fallback: try the whole thing
+  const start = raw.lastIndexOf('{', keyIdx);
+  if(start === -1) return raw;
+  let depth = 0, end = -1;
+  for(let i=start; i<raw.length; i++){
+    if(raw[i]==='{') depth++;
+    else if(raw[i]==='}'){ depth--; if(depth===0){ end=i; break; } }
+  }
+  if(end === -1) return raw;
+  return raw.slice(start, end+1);
+}
+
+function submitConfig(){
+  const raw = document.getElementById('fbConfigInput').value.trim();
+  const errEl = document.getElementById('setupErr');
+  errEl.textContent = '';
+  if(!raw){ errEl.textContent = 'Вставьте конфиг.'; return; }
+  const snippet = extractConfigSnippet(raw);
+  let cfg;
+  try{
+    // lenient parse: allow JS object literal (unquoted keys) or JSON
+    cfg = new Function('return (' + snippet + ')')();
+  }catch(e){
+    errEl.textContent = 'Не удалось разобрать конфиг (' + e.message + '). Попробуйте вставить только сам объект { ... } с apiKey и projectId, без остального кода.';
+    return;
+  }
+  if(!cfg || typeof cfg !== 'object' || !cfg.projectId || !cfg.apiKey){
+    errEl.textContent = 'В конфиге не хватает полей apiKey / projectId.';
+    return;
+  }
+  saveFbConfig(cfg);
+  connectFirebase(cfg);
+}
+
+function forgetConfig(){
+  if(!confirm('Отвязать устройство от текущей базы? Придётся заново вставить конфиг Firebase.')) return;
+  localStorage.removeItem('l2_fb_config');
+  localStorage.removeItem('l2_unlock_key');
+  location.reload();
+}
+
+function connectFirebase(cfg){
+  show('loadingScreen');
+  try{
+    if(!firebase.apps.length){ firebase.initializeApp(cfg); } else { firebase.app(); }
+  }catch(e){
+    document.getElementById('loadingScreen').innerHTML = '<h2>Ошибка конфигурации</h2><p class="small">'+esc(e.message)+'</p><button onclick="forgetConfig()">Ввести конфиг заново</button>';
+    return;
+  }
+  fs = firebase.firestore();
+  auth = firebase.auth();
+  try{ fs.enablePersistence({synchronizeTabs:true}).catch(()=>{}); }catch(e){}
+
+  auth.signInAnonymously().catch(err=>{
+    document.getElementById('loadingScreen').innerHTML = '<h2>Не удалось подключиться</h2><p class="small">'+esc(err.message)+'</p><p class="small">Проверьте, что в Firebase включена авторизация Anonymous (Authentication → Sign-in method).</p><button onclick="forgetConfig()">Ввести конфиг заново</button>';
+  });
+
+  auth.onAuthStateChanged(user=>{
+    if(user){ afterAuth(); }
+  });
+}
+
+function afterAuth(){
+  fs.collection('meta').doc('app').get().then(doc=>{
+    appPasscode = doc.exists ? (doc.data().passcode || null) : null;
+    checkGate();
+  }).catch(err=>{
+    document.getElementById('loadingScreen').innerHTML = '<h2>Ошибка доступа к базе</h2><p class="small">'+esc(err.message)+'</p><p class="small">Проверьте правила безопасности Firestore (см. README).</p>';
+  });
+}
+
+function checkGate(){
+  const savedKey = localStorage.getItem('l2_unlock_key');
+  if(appPasscode && savedKey === appPasscode){
+    enterApp();
+    return;
+  }
+  show('gateScreen');
+  document.getElementById('firstPassBlock').style.display = appPasscode ? 'none' : 'block';
+}
+
+function tryUnlock(){
+  const val = document.getElementById('gatePass').value;
+  const errEl = document.getElementById('gateErr');
+  if(!appPasscode){ errEl.textContent = 'Пароль ещё не задан — задайте его ниже.'; return; }
+  if(val === appPasscode){
+    localStorage.setItem('l2_unlock_key', val);
+    enterApp();
+  }else{
+    errEl.textContent = 'Неверный пароль.';
+  }
+}
+
+function setFirstPass(){
+  const val = document.getElementById('firstPass').value.trim();
+  if(!val){ return; }
+  fs.collection('meta').doc('app').set({passcode: val}, {merge:true}).then(()=>{
+    appPasscode = val;
+    localStorage.setItem('l2_unlock_key', val);
+    enterApp();
+  });
+}
+
+function changeAppPass(){
+  const val = document.getElementById('newAppPass').value.trim();
+  if(!val){ return; }
+  fs.collection('meta').doc('app').set({passcode: val}, {merge:true}).then(()=>{
+    appPasscode = val;
+    localStorage.setItem('l2_unlock_key', val);
+    document.getElementById('passChangeMsg').textContent = 'Пароль обновлён.';
+    document.getElementById('newAppPass').value='';
+  });
+}
+
+function lockApp(){
+  localStorage.removeItem('l2_unlock_key');
+  location.reload();
+}
+
+function enterApp(){
+  show('mainApp');
+  attachListeners();
+  initTabs();
+  document.getElementById('raidDate').value = todayStr();
+  lootRowIds = ['lr'+(lootRowSeq++)];
+  renderLootRows();
+}
+
+// ==================== FIRESTORE LISTENERS ====================
+function attachListeners(){
+  unsubs.forEach(u=>u());
+  unsubs = [];
+  ['players','raids','loot','distributions'].forEach(col=>{
+    const unsub = fs.collection(col).onSnapshot(snap=>{
+      db[col] = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      renderAll();
+    }, err=>{
+      console.error(col, err);
+    });
+    unsubs.push(unsub);
+  });
+}
+
+// ==================== TABS ====================
+function initTabs(){
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.onclick = ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+      renderAll();
+    };
+  });
+}
+
+// ==================== PLAYERS ====================
+async function getOrCreatePlayerByName(name){
+  name = name.trim();
+  if(!name) return null;
+  let p = db.players.find(p=>p.name.toLowerCase()===name.toLowerCase());
+  if(p) return p;
+  const ref = await fs.collection('players').add({name});
+  const newP = {id: ref.id, name};
+  db.players.push(newP); // optimistic, snapshot will confirm
+  return newP;
+}
+function addPlayer(){
+  const input = document.getElementById('newPlayerName');
+  const name = input.value.trim();
+  if(!name) return;
+  if(db.players.some(p=>p.name.toLowerCase()===name.toLowerCase())){ alert('Такой ник уже есть'); return; }
+  fs.collection('players').add({name});
+  input.value='';
+}
+function deletePlayer(id){
+  const used = db.raids.some(r=>r.attendees.includes(id));
+  if(used && !confirm('Игрок участвовал в походах. Удалить всё равно? (записи о посещениях сохранятся по нику)')) return;
+  fs.collection('players').doc(id).delete();
+}
+function editPlayer(id){
+  const p = db.players.find(x=>x.id===id);
+  if(!p) return;
+  const name = prompt('Новый ник', p.name);
+  if(name===null) return;
+  const trimmed = name.trim();
+  if(!trimmed) return;
+  if(db.players.some(x=>x.id!==id && x.name.toLowerCase()===trimmed.toLowerCase())){ alert('Такой ник уже есть'); return; }
+  fs.collection('players').doc(id).update({name: trimmed});
+}
+
+function playerStats(id){
+  const raidsCount = db.raids.filter(r=>r.attendees.includes(id)).length;
+  let totalEarned=0, totalUnpaid=0;
+  db.distributions.forEach(d=>{
+    const row = (d.players||[]).find(pp=>pp.playerId===id);
+    if(row){
+      totalEarned += row.share;
+      if(row.status!=='paid') totalUnpaid += row.share;
+    }
+  });
+  return {raidsCount, totalEarned, totalUnpaid};
+}
+
+function renderPlayers(){
+  const tb = document.getElementById('playersTbody');
+  if(!tb) return;
+  if(db.players.length===0){ tb.innerHTML = '<tr><td colspan="5" class="empty">Пока нет игроков</td></tr>'; return; }
+  tb.innerHTML = db.players.map(p=>{
+    const s = playerStats(p.id);
+    return `<tr>
+      <td>${esc(p.name)}</td>
+      <td>${s.raidsCount}</td>
+      <td>${fmt(s.totalEarned)}</td>
+      <td>${s.totalUnpaid>0?`<span class="pill red">${fmt(s.totalUnpaid)}</span>`:'<span class="pill green">0</span>'}</td>
+      <td><button class="icon-btn" onclick="editPlayer('${p.id}')" title="Переименовать">✎</button><button class="icon-btn" onclick="deletePlayer('${p.id}')" title="Удалить">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ==================== RAIDS ====================
+let raidAttendeesSelected = new Set();
+let raidWeights = {}; // playerId -> weight (multiplier), default 1
+let editingRaidId = null;
+
+function attendeeWeight(r, playerId){
+  if(r && r.weights && r.weights[playerId]!=null){
+    const w = Number(r.weights[playerId]);
+    return (isNaN(w) || w<=0) ? 1 : w;
+  }
+  return 1;
+}
+function formatAttendees(r){
+  return r.attendees.map(id=>{
+    const p=db.players.find(pp=>pp.id===id);
+    const name = p?p.name:'?';
+    const w = attendeeWeight(r, id);
+    return w!==1 ? `${esc(name)} <span class="pill amber">×${w}</span>` : esc(name);
+  }).join(', ');
+}
+
+function renderRaidChips(){
+  const box = document.getElementById('raidAttendeeChips');
+  if(!box) return;
+  box.innerHTML = db.players.map(p=>`<span class="chip ${raidAttendeesSelected.has(p.id)?'on':''}" onclick="toggleRaidChip('${p.id}')">${esc(p.name)}</span>`).join('') || '<span class="small muted">Сначала добавьте игроков или впишите ник ниже</span>';
+  renderRaidWeights();
+}
+function toggleWeightPanel(){
+  const panel = document.getElementById('raidWeightsPanel');
+  if(!panel) return;
+  panel.style.display = panel.style.display==='none' ? 'block' : 'none';
+}
+function renderRaidWeights(){
+  const panel = document.getElementById('raidWeightsPanel');
+  const listBox = document.getElementById('raidWeightsList');
+  const selectEl = document.getElementById('weightPlayerSelect');
+  if(!listBox || !selectEl) return;
+  const attendeeIds = [...raidAttendeesSelected];
+  // раидWeights хранит только исключения (вес != 1); у всех остальных доля обычная
+  Object.keys(raidWeights).forEach(id=>{ if(!attendeeIds.includes(id)) delete raidWeights[id]; });
+  const exceptionIds = Object.keys(raidWeights).filter(id=>attendeeIds.includes(id));
+
+  const available = attendeeIds.filter(id=>!exceptionIds.includes(id));
+  selectEl.innerHTML = available.length ? available.map(id=>{
+    const p = db.players.find(pp=>pp.id===id);
+    return `<option value="${id}">${esc(p?p.name:'?')}</option>`;
+  }).join('') : '<option value="">нет доступных участников</option>';
+
+  listBox.innerHTML = exceptionIds.length ? exceptionIds.map(id=>{
+    const p = db.players.find(pp=>pp.id===id);
+    return `<div class="row" style="margin-bottom:0;align-items:center;">
+      <span class="pill amber">${esc(p?p.name:'?')} ×${raidWeights[id]}</span>
+      <button class="icon-btn" onclick="removeWeightException('${id}')" title="Убрать">✕</button>
+    </div>`;
+  }).join('') : '<span class="small muted">Коэффициенты не заданы — у всех обычная равная доля</span>';
+
+  if(exceptionIds.length>0 && panel) panel.style.display = 'block';
+}
+function addWeightException(){
+  const id = document.getElementById('weightPlayerSelect').value;
+  const val = Number(document.getElementById('weightValueInput').value);
+  if(!id) return;
+  raidWeights[id] = (isNaN(val) || val<=0) ? 1 : val;
+  renderRaidWeights();
+}
+function removeWeightException(id){
+  delete raidWeights[id];
+  renderRaidWeights();
+}
+function toggleRaidChip(id){
+  if(raidAttendeesSelected.has(id)){ raidAttendeesSelected.delete(id); delete raidWeights[id]; }
+  else{ raidAttendeesSelected.add(id); }
+  renderRaidChips();
+}
+function bindRaidNick(){
+  const el = document.getElementById('raidNewNick');
+  if(!el || el._bound) return;
+  el._bound = true;
+  el.addEventListener('keydown', async e=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      const p = await getOrCreatePlayerByName(e.target.value);
+      if(p){ raidAttendeesSelected.add(p.id); e.target.value=''; renderRaidChips(); renderPlayers(); }
+    }
+  });
+}
+function saveRaid(){
+  const date = document.getElementById('raidDate').value || todayStr();
+  const note = document.getElementById('raidNote').value.trim();
+  if(raidAttendeesSelected.size===0){ alert('Отметьте хотя бы одного участника'); return; }
+  const attendees = [...raidAttendeesSelected];
+  const weights = {};
+  attendees.forEach(id=>{ if(raidWeights[id]!=null && raidWeights[id]!==1) weights[id] = raidWeights[id]; });
+  const payload = {date, note, attendees, weights};
+  if(editingRaidId){
+    fs.collection('raids').doc(editingRaidId).update(payload).then(resetRaidForm);
+  }else{
+    fs.collection('raids').add(payload).then(resetRaidForm);
+  }
+}
+function resetRaidForm(){
+  editingRaidId = null;
+  raidAttendeesSelected = new Set();
+  raidWeights = {};
+  document.getElementById('raidDate').value = todayStr();
+  document.getElementById('raidNote').value='';
+  document.getElementById('raidFormTitle').textContent = 'Добавить поход';
+  document.getElementById('raidSaveBtn').textContent = 'Сохранить поход';
+  document.getElementById('raidCancelBtn').style.display = 'none';
+  const panel = document.getElementById('raidWeightsPanel');
+  if(panel) panel.style.display = 'none';
+  renderRaidChips();
+}
+function editRaid(id){
+  const r = db.raids.find(x=>x.id===id);
+  if(!r) return;
+  editingRaidId = id;
+  document.getElementById('raidDate').value = r.date;
+  document.getElementById('raidNote').value = r.note || '';
+  raidAttendeesSelected = new Set(r.attendees);
+  raidWeights = {};
+  r.attendees.forEach(id=>{ const w = attendeeWeight(r, id); if(w!==1) raidWeights[id] = w; });
+  document.getElementById('raidFormTitle').textContent = 'Редактировать поход';
+  document.getElementById('raidSaveBtn').textContent = 'Сохранить изменения';
+  document.getElementById('raidCancelBtn').style.display = 'inline-block';
+  renderRaidChips();
+  document.querySelector('.tab-btn[data-tab="raids"]').click();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function cancelEditRaid(){ resetRaidForm(); }
+function deleteRaid(id){
+  if(!confirm('Удалить поход?')) return;
+  fs.collection('raids').doc(id).delete();
+  db.loot.filter(l=>l.raidId===id).forEach(l=>{ fs.collection('loot').doc(l.id).update({raidId:''}); });
+}
+function raidIsDistributed(id){ return db.distributions.some(d=>(d.raidIds||[]).includes(id)); }
+function renderRaids(){
+  const tb = document.getElementById('raidsTbody');
+  if(!tb) return;
+  if(db.raids.length===0){ tb.innerHTML='<tr><td colspan="5" class="empty">Пока нет походов</td></tr>'; return; }
+  const sorted=[...db.raids].sort((a,b)=>b.date.localeCompare(a.date));
+  tb.innerHTML = sorted.map(r=>{
+    const dist = raidIsDistributed(r.id);
+    return `<tr>
+      <td>${r.date}</td>
+      <td>${esc(r.note||'—')}</td>
+      <td>${formatAttendees(r)}</td>
+      <td>${dist?'<span class="pill green">распределено</span>':'<span class="pill amber">новое</span>'}</td>
+      <td><button class="icon-btn" onclick="editRaid('${r.id}')" title="Редактировать">✎</button><button class="icon-btn" onclick="deleteRaid('${r.id}')" title="Удалить">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ==================== LOOT ====================
+function renderLootRaidSelect(){
+  const sel = document.getElementById('lootRaid');
+  const filterSel = document.getElementById('lootFilterRaid');
+  const raidOptions = [...db.raids].sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`<option value="${r.id}">${r.date} ${esc(r.note||'')}</option>`).join('');
+  if(sel){
+    const cur = sel.value;
+    sel.innerHTML = '<option value="" disabled>Выберите из списка</option>' + raidOptions;
+    sel.value = cur || '';
+    if(!sel.value) sel.selectedIndex = 0;
+  }
+  if(filterSel){
+    const cur = filterSel.value || 'all';
+    filterSel.innerHTML = '<option value="all">Все походы</option>' + raidOptions;
+    filterSel.value = cur;
+  }
+}
+let editingLootId = null;
+let lootRowIds = [];
+let lootRowSeq = 0;
+
+function lootRowHtml(id){
+  const removeBtn = editingLootId ? '' : `<button class="icon-btn" onclick="removeLootRow('${id}')" title="Убрать строку">✕</button>`;
+  return `
+    <div class="row" style="margin-bottom:6px;" id="looprow_${id}">
+      <input type="text" id="item_${id}" placeholder="Напр. Coin of Luck" style="width:320px;min-width:0;">
+      <input type="number" id="qty_${id}" value="1" min="1" style="width:70px;min-width:0;">
+      <input type="number" id="price_${id}" min="0" placeholder="0" style="width:110px;min-width:0;">
+      ${removeBtn}
+    </div>`;
+}
+// Полный ре-рендер (перестраивает все строки заново) — используем ТОЛЬКО когда
+// осознанно начинаем с чистого листа (открыли форму, сохранили, отменили
+// редактирование). Иначе трогаем DOM точечно (addLootRow/removeLootRow),
+// чтобы не стирать то, что уже введено в других строках.
+function renderLootRows(){
+  const box = document.getElementById('lootRowsContainer');
+  const addBtn = document.getElementById('lootAddRowBtn');
+  if(!box) return;
+  box.innerHTML = lootRowIds.map(lootRowHtml).join('');
+  if(addBtn) addBtn.style.display = editingLootId ? 'none' : 'inline-block';
+}
+function addLootRow(){
+  const id = 'lr'+(lootRowSeq++);
+  lootRowIds.push(id);
+  const box = document.getElementById('lootRowsContainer');
+  if(box) box.insertAdjacentHTML('beforeend', lootRowHtml(id));
+  const el = document.getElementById('item_'+id);
+  if(el) el.focus();
+}
+function removeLootRow(id){
+  lootRowIds = lootRowIds.filter(x=>x!==id);
+  const rowEl = document.getElementById('looprow_'+id);
+  if(rowEl) rowEl.remove();
+  if(lootRowIds.length===0) addLootRow();
+}
+function saveLoot(){
+  const raidId = document.getElementById('lootRaid').value;
+  const raid = db.raids.find(r=>r.id===raidId);
+  if(!raid){ alert('Выберите поход, к которому относится дроп'); return; }
+  const date = raid.date;
+
+  if(editingLootId){
+    const id = lootRowIds[0];
+    const item = document.getElementById('item_'+id).value.trim();
+    const qty = Number(document.getElementById('qty_'+id).value)||1;
+    const price = Number(document.getElementById('price_'+id).value)||0;
+    if(!item){ alert('Укажите название предмета'); return; }
+    fs.collection('loot').doc(editingLootId).update({raidId, date, item, qty, price}).then(resetLootForm);
+    return;
+  }
+
+  const rows = lootRowIds.map(id=>{
+    const item = document.getElementById('item_'+id).value.trim();
+    const qty = Number(document.getElementById('qty_'+id).value)||1;
+    const price = Number(document.getElementById('price_'+id).value)||0;
+    return {item, qty, price};
+  }).filter(r=>r.item);
+  if(rows.length===0){ alert('Укажите название хотя бы одного предмета'); return; }
+
+  const batch = fs.batch();
+  rows.forEach(r=>{
+    const ref = fs.collection('loot').doc();
+    batch.set(ref, {date, raidId, item:r.item, qty:r.qty, price:r.price});
+  });
+  batch.commit().then(resetLootForm);
+}
+function resetLootForm(){
+  // Привязку к походу намеренно не сбрасываем — обычно за один поход
+  // добавляют сразу несколько предметов подряд, неудобно каждый раз выбирать заново.
+  editingLootId = null;
+  lootRowIds = ['lr'+(lootRowSeq++)];
+  renderLootRows();
+  document.getElementById('lootFormTitle').textContent = 'Добавить дроп / продажу';
+  document.getElementById('lootSaveBtn').textContent = 'Добавить';
+  document.getElementById('lootCancelBtn').style.display = 'none';
+}
+function editLoot(id){
+  const l = db.loot.find(x=>x.id===id);
+  if(!l) return;
+  editingLootId = id;
+  lootRowIds = ['lr'+(lootRowSeq++)];
+  renderLootRows();
+  document.getElementById('lootRaid').value = l.raidId || '';
+  const rid = lootRowIds[0];
+  document.getElementById('item_'+rid).value = l.item;
+  document.getElementById('qty_'+rid).value = l.qty;
+  document.getElementById('price_'+rid).value = l.price;
+  document.getElementById('lootFormTitle').textContent = 'Редактировать дроп / продажу';
+  document.getElementById('lootSaveBtn').textContent = 'Сохранить изменения';
+  document.getElementById('lootCancelBtn').style.display = 'inline-block';
+  document.querySelector('.tab-btn[data-tab="loot"]').click();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function cancelEditLoot(){ resetLootForm(); }
+function deleteLoot(id){ fs.collection('loot').doc(id).delete(); }
+function lootIsDistributed(id){ return db.distributions.some(d=>(d.lootIds||[]).includes(id)); }
+function renderLoot(){
+  const tb = document.getElementById('lootTbody');
+  if(!tb) return;
+  const filterVal = document.getElementById('lootFilterRaid') ? document.getElementById('lootFilterRaid').value : 'all';
+  let filtered = db.loot;
+  if(filterVal==='unlinked') filtered = db.loot.filter(l=>!l.raidId);
+  else if(filterVal && filterVal!=='all') filtered = db.loot.filter(l=>l.raidId===filterVal);
+  if(filtered.length===0){ tb.innerHTML='<tr><td colspan="7" class="empty">Нет записей дропа для этого фильтра</td></tr>'; }
+  else{
+    const sorted=[...filtered].sort((a,b)=>b.date.localeCompare(a.date));
+    tb.innerHTML = sorted.map(l=>{
+      const raid = db.raids.find(r=>r.id===l.raidId);
+      const dist = lootIsDistributed(l.id);
+      return `<tr>
+        <td>${l.date}</td>
+        <td>${esc(l.item)}</td>
+        <td>${l.qty}</td>
+        <td>${fmt(l.price)}</td>
+        <td>${raid?raid.date+' '+esc(raid.note||''):'<span class="muted">—</span>'}</td>
+        <td>${dist?'<span class="pill green">распределено</span>':'<span class="pill amber">новое</span>'}</td>
+        <td><button class="icon-btn" onclick="editLoot('${l.id}')" title="Редактировать">✎</button><button class="icon-btn" onclick="deleteLoot('${l.id}')" title="Удалить">✕</button></td>
+      </tr>`;
+    }).join('');
+  }
+  const unalloc = db.loot.filter(l=>!lootIsDistributed(l.id)).reduce((s,l)=>s+l.price,0);
+  const el = document.getElementById('lootUnallocSum');
+  if(el) el.textContent = fmt(unalloc);
+}
+
+// ==================== CALC ====================
+let calcRaidSel = new Set();
+let calcInitialized = false;
+
+function renderCalc(){
+  const showAllEl = document.getElementById('calcShowAll');
+  if(!showAllEl) return;
+  const showAll = showAllEl.checked;
+  const raidsPool = db.raids.filter(r=>showAll || !raidIsDistributed(r.id));
+
+  if(!calcInitialized){
+    raidsPool.forEach(r=>{ if(!raidIsDistributed(r.id)) calcRaidSel.add(r.id); });
+    calcInitialized = true;
+  }
+
+  const rtb = document.getElementById('calcRaidsTbody');
+  rtb.innerHTML = raidsPool.length ? [...raidsPool].sort((a,b)=>a.date.localeCompare(b.date)).map(r=>{
+    return `<tr>
+      <td><input type="checkbox" ${calcRaidSel.has(r.id)?'checked':''} onchange="toggleCalcRaid('${r.id}')"></td>
+      <td>${r.date}</td><td>${esc(r.note||'—')}</td><td>${formatAttendees(r)}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="4" class="empty">Нет доступных походов</td></tr>';
+
+  renderCalcPreview();
+}
+function toggleCalcRaid(id){ calcRaidSel.has(id)?calcRaidSel.delete(id):calcRaidSel.add(id); renderCalcPreview(); }
+
+function computePreview(){
+  // Каждый поход "несёт" свою выручку (привязанный к нему дроп + равная доля
+  // непривязанного дропа) и делится между участниками именно этого похода
+  // ПРОПОРЦИОНАЛЬНО ИХ ВЕСУ (по умолчанию у всех вес 1 — то есть поровну;
+  // если кому-то в конкретном походе выставлен коэффициент, например 2,
+  // он получает вдвое больше своей обычной доли именно с этого похода).
+  // Доля игрока — сумма его долей по всем походам, где он участвовал.
+  // Сумма всех долей всегда равна totalRevenue.
+  // Весь ещё не распределённый дроп подтягивается автоматически, без ручного выбора:
+  // привязанный — только если его поход отмечен, непривязанный — всегда.
+  const raidIds = [...calcRaidSel];
+  const totalSessions = raidIds.length;
+  const selectedLoot = db.loot.filter(l=>!lootIsDistributed(l.id) && (!l.raidId || raidIds.includes(l.raidId)));
+  const lootIds = selectedLoot.map(l=>l.id);
+  const totalRevenue = selectedLoot.reduce((s,l)=>s+l.price,0);
+  const unlinkedRevenue = selectedLoot.filter(l=>!l.raidId).reduce((s,l)=>s+l.price,0);
+  const unlinkedPerRaid = totalSessions>0 ? unlinkedRevenue/totalSessions : 0;
+
+  const raidRevenue = {};
+  const raidTotalWeight = {};
+  raidIds.forEach(rid=>{
+    const r = db.raids.find(x=>x.id===rid);
+    const linked = selectedLoot.filter(l=>l.raidId===rid).reduce((s,l)=>s+l.price,0);
+    raidRevenue[rid] = linked + unlinkedPerRaid;
+    raidTotalWeight[rid] = r ? r.attendees.reduce((s,pid)=>s+attendeeWeight(r,pid), 0) : 0;
+  });
+
+  const playerIds = new Set();
+  raidIds.forEach(rid=>{ const r=db.raids.find(x=>x.id===rid); if(r) r.attendees.forEach(a=>playerIds.add(a)); });
+
+  const rows = [...playerIds].map(pid=>{
+    const p = db.players.find(x=>x.id===pid);
+    let share = 0, attended = 0;
+    raidIds.forEach(rid=>{
+      const r = db.raids.find(x=>x.id===rid);
+      if(r && r.attendees.includes(pid)){
+        attended++;
+        const totalW = raidTotalWeight[rid];
+        if(totalW>0) share += raidRevenue[rid] * (attendeeWeight(r,pid) / totalW);
+      }
+    });
+    return {playerId:pid, name:p?p.name:'?', attended, totalSessions, share, status:'none', note:''};
+  }).sort((a,b)=>b.share-a.share);
+  return {raidIds, lootIds, totalSessions, totalRevenue, rows, selectedLoot};
+}
+function renderCalcPreview(){
+  const {totalSessions, totalRevenue, rows, selectedLoot} = computePreview();
+
+  const ltb = document.getElementById('calcLootPreviewTbody');
+  if(ltb){
+    ltb.innerHTML = selectedLoot.length ? [...selectedLoot].sort((a,b)=>a.date.localeCompare(b.date)).map(l=>{
+      const raid = db.raids.find(r=>r.id===l.raidId);
+      return `<tr><td>${l.date}</td><td>${esc(l.item)} ×${l.qty}</td><td>${fmt(l.price)}</td><td>${raid?esc(raid.note||raid.date):'<span class="muted">без привязки</span>'}</td></tr>`;
+    }).join('') : '<tr><td colspan="4" class="empty">Нет доступного дропа</td></tr>';
+  }
+
+  let html = `<div class="row" style="gap:20px;">
+    <div><b>Походов выбрано:</b> ${totalSessions}</div>
+    <div><b>Сумма к распределению:</b> ${fmt(totalRevenue)} L монет</div>
+  </div>`;
+  if(rows.length===0){
+    html += '<p class="empty">Отметьте походы, чтобы увидеть предварительный расчёт</p>';
+  }else{
+    html += '<table><thead><tr><th>Игрок</th><th>Ходил</th><th>Доля</th></tr></thead><tbody>' +
+      rows.map(r=>`<tr><td>${esc(r.name)}</td><td>${r.attended}/${r.totalSessions}</td><td>${fmt(r.share)}</td></tr>`).join('') +
+      '</tbody></table>';
+  }
+  const el = document.getElementById('calcPreview');
+  if(el) el.innerHTML = html;
+}
+function saveDistribution(){
+  const {raidIds, lootIds, totalSessions, totalRevenue, rows} = computePreview();
+  if(totalSessions===0 || rows.length===0){ alert('Отметьте хотя бы один поход с участниками'); return; }
+  const label = document.getElementById('calcLabel').value.trim() || ('Расчёт от ' + todayStr());
+  fs.collection('distributions').add({
+    createdAt: todayStr(), label,
+    raidIds, lootIds, totalSessions, totalRevenue,
+    players: rows
+  }).then(()=>{
+    document.getElementById('calcLabel').value='';
+    calcRaidSel = new Set(); calcInitialized = false;
+    document.querySelector('.tab-btn[data-tab="history"]').click();
+  });
+}
+
+// ==================== HISTORY ====================
+function setStatus(distId, playerId, status){
+  const d = db.distributions.find(x=>x.id===distId);
+  const players = (d.players||[]).map(p=>p.playerId===playerId ? {...p, status} : p);
+  fs.collection('distributions').doc(distId).update({players});
+}
+function deleteDistribution(id){
+  if(!confirm('Удалить расчёт? Походы и дроп из него снова станут доступны для нового расчёта.')) return;
+  fs.collection('distributions').doc(id).delete();
+}
+function copyMessage(distId, playerId){
+  const d = db.distributions.find(x=>x.id===distId);
+  const row = (d.players||[]).find(p=>p.playerId===playerId);
+  const text = `Привет! За ${row.attended} из ${row.totalSessions} походов (${d.label}) тебе начислено ${fmt(row.share)} L монет. Скинь, куда перевести.`;
+  if(navigator.clipboard) navigator.clipboard.writeText(text);
+  const btn = event.target;
+  const old = btn.textContent;
+  btn.textContent = 'Скопировано ✓';
+  setTimeout(()=>{ btn.textContent = old; }, 1200);
+}
+function renderHistory(){
+  const box = document.getElementById('historyList');
+  if(!box) return;
+  if(db.distributions.length===0){ box.innerHTML = '<p class="empty">Расчётов ещё не было. Создайте первый на вкладке «Расчёт».</p>'; return; }
+  const sorted = [...db.distributions].sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+  box.innerHTML = sorted.map(d=>{
+    const players = d.players||[];
+    const paid = players.filter(p=>p.status==='paid').length;
+    const rowsHtml = [...players].sort((a,b)=>b.share-a.share).map(r=>`
+      <tr>
+        <td>${esc(r.name)}</td>
+        <td>${r.attended}/${r.totalSessions}</td>
+        <td>${fmt(r.share)}</td>
+        <td>
+          <select class="status status-${r.status}" onchange="setStatus('${d.id}','${r.playerId}',this.value)">
+            <option value="none" ${r.status==='none'?'selected':''}>Не написано</option>
+            <option value="sent" ${r.status==='sent'?'selected':''}>Написано, ждём</option>
+            <option value="paid" ${r.status==='paid'?'selected':''}>Оплачено</option>
+          </select>
+        </td>
+        <td><button class="copy-btn" onclick="copyMessage('${d.id}','${r.playerId}')">Скопировать сообщение</button></td>
+      </tr>`).join('');
+    return `<div class="dist-card">
+      <div class="dist-head">
+        <div class="title">${esc(d.label)} <span class="small">(${d.createdAt})</span></div>
+        <div class="small">Сумма: ${fmt(d.totalRevenue)} L монет · Походов: ${d.totalSessions} · Оплачено: ${paid}/${players.length}</div>
+        <button class="icon-btn" onclick="deleteDistribution('${d.id}')">✕ удалить</button>
+      </div>
+      <table><thead><tr><th>Игрок</th><th>Ходил</th><th>Доля</th><th>Статус</th><th></th></tr></thead>
+      <tbody>${rowsHtml}</tbody></table>
+    </div>`;
+  }).join('');
+}
+
+// ==================== STATS ====================
+function renderStats(){
+  const el = document.getElementById('statRow');
+  if(!el) return;
+  const totalUnpaid = db.distributions.reduce((s,d)=>s+(d.players||[]).filter(p=>p.status!=='paid').reduce((s2,p)=>s2+p.share,0),0);
+  const activeDist = db.distributions.filter(d=>(d.players||[]).some(p=>p.status!=='paid')).length;
+  el.innerHTML = `
+    <div class="stat"><div class="num">${db.players.length}</div><div class="lbl">Игроков</div></div>
+    <div class="stat"><div class="num">${db.raids.length}</div><div class="lbl">Походов</div></div>
+    <div class="stat"><div class="num">${fmt(db.loot.filter(l=>!lootIsDistributed(l.id)).reduce((s,l)=>s+l.price,0))}</div><div class="lbl">Не распределено, L монет</div></div>
+    <div class="stat"><div class="num">${fmt(totalUnpaid)}</div><div class="lbl">Не выплачено, L монет</div></div>
+    <div class="stat"><div class="num">${activeDist}</div><div class="lbl">Расчётов с долгами</div></div>
+  `;
+}
+
+// ==================== RENDER ALL ====================
+function renderAll(){
+  if(document.getElementById('mainApp').style.display === 'none') return;
+  bindRaidNick();
+  renderPlayers();
+  renderRaidChips();
+  renderRaids();
+  renderLootRaidSelect();
+  renderLoot();
+  renderCalc();
+  renderHistory();
+  renderStats();
+}
+</script>
+</body>
+</html>
