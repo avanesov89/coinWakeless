@@ -4,81 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Учёт дропа клана</title>
-<style>
-  :root{
-    color-scheme: light;
-    --bg:#f7f8fa; --panel:#ffffff; --border:#e2e5ea; --text:#1f2430; --muted:#6b7280;
-    --accent:#3b5bdb; --accent-light:#e8ecfd;
-    --green:#1f9d55; --green-bg:#e7f8ee;
-    --amber:#b7791f; --amber-bg:#fdf3df;
-    --red:#c0392b; --red-bg:#fce9e7;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
-  .app{max-width:1180px;margin:0 auto;padding:18px 20px 60px;}
-  h1{font-size:20px;margin:0 0 4px;}
-  .subtitle{color:var(--muted);margin:0 0 18px;font-size:13px;}
-  .tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin-bottom:18px;flex-wrap:wrap;}
-  .tab-btn{padding:9px 16px;border:none;background:none;cursor:pointer;font-size:14px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;}
-  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
-  .panel{display:none;}
-  .panel.active{display:block;}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;}
-  .card h2{font-size:15px;margin:0 0 12px;}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;}
-  .field{display:flex;flex-direction:column;gap:4px;}
-  .field label{font-size:12px;color:var(--muted);}
-  input[type=text],input[type=number],input[type=date],input[type=password],select,textarea{
-    border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-size:13px;background:#fff;color:var(--text);min-width:120px;
-  }
-  textarea{min-width:220px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;}
-  button{border:none;border-radius:6px;padding:8px 14px;font-size:13px;cursor:pointer;background:var(--accent);color:#fff;font-weight:500;}
-  button.secondary{background:var(--accent-light);color:var(--accent);}
-  button.danger{background:var(--red-bg);color:var(--red);}
-  button.ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
-  button:disabled{opacity:.45;cursor:not-allowed;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);}
-  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;}
-  tr:hover td{background:#fafbfc;}
-  .muted{color:var(--muted);}
-  .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;}
-  .pill.green{background:var(--green-bg);color:var(--green);}
-  .pill.amber{background:var(--amber-bg);color:var(--amber);}
-  .pill.red{background:var(--red-bg);color:var(--red);}
-  .chips{display:flex;flex-wrap:wrap;gap:6px;width:100%;}
-  .chip{padding:5px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;cursor:pointer;background:#fff;user-select:none;}
-  .chip.on{background:var(--accent);color:#fff;border-color:var(--accent);}
-  .stat-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
-  .stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 16px;min-width:140px;}
-  .stat .num{font-size:20px;font-weight:700;}
-  .stat .lbl{font-size:12px;color:var(--muted);}
-  .icon-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 6px;}
-  .icon-btn:hover{color:var(--red);}
-  .empty{color:var(--muted);font-style:italic;padding:14px 0;}
-  select.status{border-radius:6px;font-weight:600;font-size:12px;padding:5px 7px;}
-  .status-none{background:var(--red-bg);color:var(--red);}
-  .status-sent{background:var(--amber-bg);color:var(--amber);}
-  .status-paid{background:var(--green-bg);color:var(--green);}
-  .dist-card{border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;background:#fff;}
-  .dist-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
-  .dist-head .title{font-weight:600;}
-  .small{font-size:12px;color:var(--muted);}
-  .copy-btn{font-size:11px;padding:4px 8px;background:var(--accent-light);color:var(--accent);}
-  hr.sep{border:none;border-top:1px solid var(--border);margin:14px 0;}
-
-  /* gate & setup screens */
-  #gateScreen,#setupScreen,#loadingScreen{
-    max-width:440px;margin:60px auto;background:var(--panel);border:1px solid var(--border);
-    border-radius:12px;padding:26px;
-  }
-  #gateScreen h2,#setupScreen h2{margin-top:0;font-size:17px;}
-  .err{color:var(--red);font-size:12px;margin-top:6px;min-height:16px;}
-  .ok{color:var(--green);font-size:12px;margin-top:6px;}
-  .steps{font-size:12.5px;color:var(--muted);line-height:1.5;background:var(--bg);border-radius:8px;padding:10px 12px;margin-top:10px;}
-  .steps b{color:var(--text);}
-  #topbar{display:flex;justify-content:flex-end;margin-bottom:6px;}
-</style>
+<script>
+  // Применяем сохранённую тему ДО отрисовки страницы, чтобы не было
+  // мигания светлой темой при загрузке, если выбрана тёмная.
+  (function(){
+    var t = localStorage.getItem('l2_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
@@ -120,6 +54,7 @@
 
 <div class="app" id="mainApp" style="display:none;">
   <div id="topbar">
+    <button class="ghost" onclick="toggleTheme()" id="themeToggleBtn">🌙 Тёмная тема</button>
     <button class="ghost" onclick="lockApp()">Выйти</button>
   </div>
   <h1>Учёт дропа и распределения — клан</h1>
@@ -313,8 +248,26 @@ function todayStr(){ return new Date().toISOString().slice(0,10); }
 function fmt(n){ return Number(n||0).toLocaleString('ru-RU',{maximumFractionDigits:2}); }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+// ==================== THEME ====================
+function applyThemeButtonLabel(){
+  const btn = document.getElementById('themeToggleBtn');
+  if(!btn) return;
+  const t = document.documentElement.getAttribute('data-theme') || 'light';
+  btn.textContent = t==='dark' ? '☀️ Светлая тема' : '🌙 Тёмная тема';
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme') || 'light';
+  const next = cur==='dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('l2_theme', next);
+  applyThemeButtonLabel();
+}
+
 // ==================== BOOTSTRAP ====================
-window.addEventListener('DOMContentLoaded', boot);
+window.addEventListener('DOMContentLoaded', function(){
+  applyThemeButtonLabel();
+  boot();
+});
 
 function boot(){
   const cfg = loadFbConfig();
