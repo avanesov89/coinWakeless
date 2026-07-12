@@ -86,7 +86,7 @@
         <thead><tr>
           <th class="sortable" onclick="setPlayersSort('name')" id="thPlayerName">Ник</th>
           <th class="sortable" onclick="setPlayersSort('raids')" id="thPlayerRaids">Походов</th>
-          <th>Заработано всего</th><th>Не оплачено</th><th></th>
+          <th>Заработано всего</th><th title="Сумма из расчётов, которая ещё не отмечена статусом «Оплачено» в истории">Ждёт выплаты</th><th></th>
         </tr></thead>
         <tbody id="playersTbody"></tbody>
       </table>
@@ -109,7 +109,7 @@
         </div>
       </div>
       <div class="field" style="margin-bottom:10px;">
-        <button type="button" class="ghost" style="font-size:12px;padding:4px 10px;" onclick="toggleWeightPanel()">⚙ Коэффициент вклада (редкий случай — раз в месяц и т.п.)</button>
+        <button type="button" class="ghost" style="font-size:12px;padding:4px 10px;align-self:flex-start;width:auto;" onclick="toggleWeightPanel()">⚙ Коэффициент вклада</button>
         <div id="raidWeightsPanel" style="display:none;margin-top:8px;background:var(--bg);border-radius:8px;padding:10px;">
           <p class="small" style="margin:0 0 8px;">Если кто-то в этом конкретном походе внёс особый вклад (мощный бафф, помог быстрее убить босса и т.п.), выберите его и укажите множитель — его доля именно с этого похода вырастет за счёт остальных участников, пропорционально. Для всех остальных ничего указывать не нужно — по умолчанию доля равная.</p>
           <div class="row" style="margin-bottom:8px;">
@@ -270,6 +270,14 @@ let unsubs = [];
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function fmt(n){ return Number(n||0).toLocaleString('ru-RU',{maximumFractionDigits:2}); }
+// ДД.ММ.ГГГГ вместо ISO — глазами дату так сканировать быстрее. Сортировка
+// по-прежнему идёт по исходной ISO-строке r.date, formatDate — только для показа.
+function fmtDate(iso){
+  if(!iso) return '—';
+  const parts = iso.split('-');
+  if(parts.length!==3) return iso;
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+}
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ==================== THEME ====================
@@ -722,9 +730,13 @@ function editRaid(id){
 }
 function cancelEditRaid(){ resetRaidForm(); }
 function deleteRaid(id){
-  if(!confirm('Удалить поход?')) return;
+  const linkedLoot = db.loot.filter(l=>l.raidId===id);
+  let msg = 'Удалить поход?';
+  if(linkedLoot.length>0) msg = `Удалить поход и весь привязанный к нему дроп (${linkedLoot.length} поз.)? Это действие нельзя отменить.`;
+  if(raidIsDistributed(id)) msg += ' Поход уже участвовал в сохранённом расчёте — сам расчёт и выплаты в истории не изменятся, удалится только исходная запись похода и его дроп.';
+  if(!confirm(msg)) return;
   fs.collection('raids').doc(id).delete();
-  db.loot.filter(l=>l.raidId===id).forEach(l=>{ fs.collection('loot').doc(l.id).update({raidId:''}); });
+  linkedLoot.forEach(l=>{ fs.collection('loot').doc(l.id).delete(); });
 }
 function raidIsDistributed(id){ return db.distributions.some(d=>(d.raidIds||[]).includes(id)); }
 let raidsSort = {dir:'desc'}; // по умолчанию — новые сверху
@@ -741,10 +753,10 @@ function renderRaids(){
   tb.innerHTML = sorted.map(r=>{
     const dist = raidIsDistributed(r.id);
     return `<tr>
-      <td>${r.date}</td>
+      <td class="date-cell">${fmtDate(r.date)}</td>
       <td>${esc(r.note||'—')}</td>
       <td>${formatAttendees(r)}</td>
-      <td>${dist?'<span class="pill green">распределено</span>':'<span class="pill amber">новое</span>'}</td>
+      <td>${dist?'<span class="pill green">Распределён</span>':'<span class="pill amber">Не распределён</span>'}</td>
       <td><button class="icon-btn" onclick="editRaid('${r.id}')" title="Редактировать">✎</button><button class="icon-btn" onclick="deleteRaid('${r.id}')" title="Удалить">✕</button></td>
     </tr>`;
   }).join('');
@@ -754,7 +766,7 @@ function renderRaids(){
 function renderLootRaidSelect(){
   const sel = document.getElementById('lootRaid');
   const filterSel = document.getElementById('lootFilterRaid');
-  const raidOptions = [...db.raids].sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`<option value="${r.id}">${r.date} ${esc(r.note||'')}</option>`).join('');
+  const raidOptions = [...db.raids].sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`<option value="${r.id}">${fmtDate(r.date)} ${esc(r.note||'')}</option>`).join('');
   if(sel){
     const cur = sel.value;
     sel.innerHTML = '<option value="" disabled>Выберите из списка</option>' + raidOptions;
@@ -886,23 +898,43 @@ function renderLoot(){
   else if(filterVal && filterVal!=='all') filtered = db.loot.filter(l=>l.raidId===filterVal);
   if(filtered.length===0){ tb.innerHTML='<tr><td colspan="7" class="empty">Нет записей дропа для этого фильтра</td></tr>'; }
   else{
-    const sorted=[...filtered].sort((a,b)=>{
+    const sortItems = (arr)=> [...arr].sort((a,b)=>{
       const cmp = lootSort.field==='price' ? (a.price - b.price) : a.date.localeCompare(b.date);
       return lootSort.dir==='asc' ? cmp : -cmp;
     });
-    tb.innerHTML = sorted.map(l=>{
+    const lootRow = (l)=>{
       const raid = db.raids.find(r=>r.id===l.raidId);
       const dist = lootIsDistributed(l.id);
       return `<tr>
-        <td>${l.date}</td>
+        <td class="date-cell">${fmtDate(l.date)}</td>
         <td>${esc(l.item)}</td>
         <td>${l.qty}</td>
         <td>${fmt(l.price)}</td>
-        <td>${raid?raid.date+' '+esc(raid.note||''):'<span class="muted">—</span>'}</td>
-        <td>${dist?'<span class="pill green">распределено</span>':'<span class="pill amber">новое</span>'}</td>
+        <td>${raid?fmtDate(raid.date)+' '+esc(raid.note||''):'<span class="muted">—</span>'}</td>
+        <td>${dist?'<span class="pill green">Распределён</span>':'<span class="pill amber">Не распределён</span>'}</td>
         <td><button class="icon-btn" onclick="editLoot('${l.id}')" title="Редактировать">✎</button><button class="icon-btn" onclick="deleteLoot('${l.id}')" title="Удалить">✕</button></td>
       </tr>`;
-    }).join('');
+    };
+
+    if(filterVal==='all'){
+      // группируем по походу, чтобы список не сливался в сплошную ленту
+      const groups = {};
+      filtered.forEach(l=>{ const key = l.raidId || '__unlinked__'; (groups[key]=groups[key]||[]).push(l); });
+      const keys = Object.keys(groups).sort((ka,kb)=>{
+        if(ka==='__unlinked__') return 1;
+        if(kb==='__unlinked__') return -1;
+        const ra=db.raids.find(r=>r.id===ka), rb=db.raids.find(r=>r.id===kb);
+        return (rb?rb.date:'').localeCompare(ra?ra.date:'');
+      });
+      tb.innerHTML = keys.map(key=>{
+        const raid = key==='__unlinked__' ? null : db.raids.find(r=>r.id===key);
+        const label = raid ? `${fmtDate(raid.date)} — ${esc(raid.note||'без названия')}` : 'Без привязки к походу';
+        const headerRow = `<tr class="group-row"><td colspan="7">${label}</td></tr>`;
+        return headerRow + sortItems(groups[key]).map(lootRow).join('');
+      }).join('');
+    }else{
+      tb.innerHTML = sortItems(filtered).map(lootRow).join('');
+    }
   }
   const unalloc = db.loot.filter(l=>!lootIsDistributed(l.id)).reduce((s,l)=>s+l.price,0);
   const el = document.getElementById('lootUnallocSum');
@@ -928,7 +960,7 @@ function renderCalc(){
   rtb.innerHTML = raidsPool.length ? [...raidsPool].sort((a,b)=>b.date.localeCompare(a.date)).map(r=>{
     return `<tr>
       <td><input type="checkbox" ${calcRaidSel.has(r.id)?'checked':''} onchange="toggleCalcRaid('${r.id}')"></td>
-      <td>${r.date}</td><td>${esc(r.note||'—')}</td><td>${formatAttendees(r)}</td>
+      <td class="date-cell">${fmtDate(r.date)}</td><td>${esc(r.note||'—')}</td><td>${formatAttendees(r)}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="4" class="empty">Нет доступных походов</td></tr>';
 
@@ -988,7 +1020,7 @@ function renderCalcPreview(){
   if(ltb){
     ltb.innerHTML = selectedLoot.length ? [...selectedLoot].sort((a,b)=>b.date.localeCompare(a.date)).map(l=>{
       const raid = db.raids.find(r=>r.id===l.raidId);
-      return `<tr><td>${l.date}</td><td>${esc(l.item)} ×${l.qty}</td><td>${fmt(l.price)}</td><td>${raid?esc(raid.note||raid.date):'<span class="muted">без привязки</span>'}</td></tr>`;
+      return `<tr><td class="date-cell">${fmtDate(l.date)}</td><td>${esc(l.item)} ×${l.qty}</td><td>${fmt(l.price)}</td><td>${raid?esc(raid.note||fmtDate(raid.date)):'<span class="muted">без привязки</span>'}</td></tr>`;
     }).join('') : '<tr><td colspan="4" class="empty">Нет доступного дропа</td></tr>';
   }
 
@@ -1071,7 +1103,7 @@ function renderHistory(){
       </tr>`).join('');
     return `<div class="dist-card">
       <div class="dist-head">
-        <div class="title">${esc(d.label)} <span class="small">(${d.createdAt})</span></div>
+        <div class="title">${esc(d.label)} <span class="small">(${fmtDate(d.createdAt)})</span></div>
         <div class="small">Сумма: ${fmt(d.totalRevenue)} L монет · Походов: ${d.totalSessions} · Оплачено: ${paid}/${players.length}</div>
         <button class="icon-btn" onclick="deleteDistribution('${d.id}')">✕ удалить</button>
       </div>

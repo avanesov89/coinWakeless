@@ -47,6 +47,9 @@ th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--border);}
 th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;}
 th.sortable{cursor:pointer;user-select:none;}
 th.sortable:hover{color:var(--accent);}
+.date-cell{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}
+.group-row td{background:var(--bg);color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.02em;padding:10px 8px;border-bottom:1px solid var(--border);border-top:1px solid var(--border);}
+.group-row:first-child td{border-top:none;}
 tr:hover td{background:var(--hover-bg);}
 .muted{color:var(--muted);}
 .pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600;}
